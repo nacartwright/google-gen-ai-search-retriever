@@ -63,7 +63,7 @@ class EnterpriseSearchRetriever(BaseRetriever, BaseModel):
     def _get_web_document(self, urls: list) -> List[Document]:
         loader = WebBaseLoader(urls)
         documents = loader.load()
-        return [Document(page_content=" ".join(doc.page_content.split()), metadata=doc.metadata) for doc in documents]
+        return [Document(page_content=" ".join(doc.page_content.split()), metadata=doc.metadata) for doc in documents] # This removes any markup or uncessary characters. 
     
     @classmethod   
     def _chunk_documents(self, documents):
