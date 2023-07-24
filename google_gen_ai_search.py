@@ -29,7 +29,7 @@ class EnterpriseSearchRetriever(BaseRetriever, BaseModel):
     _serving_config: Any
     project_id: str # Project Number
     search_engine_id: str
-    serving_config_id: str = "default_search"
+    serving_config_id: str = "default_search:search"
     location_id: str = "global"
     filter: Optional[str] = None
     get_extractive_answers: bool = False
@@ -63,7 +63,7 @@ class EnterpriseSearchRetriever(BaseRetriever, BaseModel):
     def _get_web_document(self, urls: list) -> List[Document]:
         loader = WebBaseLoader(urls)
         documents = loader.load()
-        return [Document(page_content=" ".join(doc.page_content.split()), metadata=doc.metadata) for doc in documents] # This removes any markup or uncessary characters. 
+        return [Document(page_content=" ".join(doc.page_content.split()), metadata=doc.metadata) for doc in documents]
     
     @classmethod   
     def _chunk_documents(self, documents):
@@ -93,14 +93,18 @@ class EnterpriseSearchRetriever(BaseRetriever, BaseModel):
                 "page_size": self.max_documents})
 
             response = self._client.search(request=request)
-            urls = self._parse_search_response(MessageToDict(response._pb))
-            documents = self._get_web_document(urls)
-            chunks = self._chunk_documents(documents)
-
-            db = FAISS.from_documents(chunks, embeddings)
-            retriever = db.as_retriever()
-            return retriever.get_relevant_documents(query)
-
+            response_json = MessageToDict(response._pb)
+            
+            if "results" in response_json:
+                urls = self._parse_search_response(response_json)
+                documents = self._get_web_document(urls)
+                chunks = self._chunk_documents(documents)
+                # This is only necessary if you want to use FAISS to narrow the chunks down.
+                # db = FAISS.from_documents(chunks, embeddings)
+                # retriever = db.as_retriever()
+                return chunks
+            else:
+                return []
         except Exception as e:
             raise Exception(e)
 
